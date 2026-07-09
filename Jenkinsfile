@@ -10,13 +10,17 @@ pipeline {
             }
         }
 
-        stage('Build') {
+        stage('Build Application') {
             steps {
                 sh './mvnw clean package'
             }
         }
 
+        stage('Build Docker Image') {
+            steps {
+                sh 'docker build -t devops-lab:latest .'
+            }
+        }
+
     }
-
 }
-

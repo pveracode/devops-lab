@@ -1,0 +1,9 @@
+services:
+  app:
+    image: devops-lab:1.0
+    container_name: devops-lab-app
+
+    ports:
+      - "8080:8080"
+
+    restart: unless-stopped

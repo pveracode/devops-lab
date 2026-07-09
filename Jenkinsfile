@@ -1,66 +1,52 @@
-pipeline {
+stages {
 
-    agent any
-
-    environment {
-        IMAGE_NAME = "localhost:5000/devops-lab"
-        IMAGE_TAG = "latest"
-        CONTAINER_NAME = "devops-lab-app"
+    stage('Checkout') {
+        steps {
+            echo 'Checking out source code'
+        }
     }
 
-    stages {
-
-        stage('Checkout') {
-            steps {
-                echo 'Checking out source code'
-            }
+    stage('Build Application') {
+        steps {
+            sh './mvnw clean package'
         }
+    }
 
-        stage('Build Application') {
-            steps {
-                sh './mvnw clean package'
-            }
-        }
-
-        stage('Build Docker Image') {
-            steps {
+    stage('SonarQube Analysis') {
+        steps {
+            withSonarQubeEnv('sonarqube') {
                 sh '''
-                docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
-                '''
-            }
-        }
-
-        stage('Push Docker Image') {
-            steps {
-                sh '''
-                docker push ${IMAGE_NAME}:${IMAGE_TAG}
-                '''
-            }
-        }
-
-        stage('Deploy Container') {
-            steps {
-                sh '''
-                docker stop ${CONTAINER_NAME} || true
-                docker rm ${CONTAINER_NAME} || true
-
-                docker run -d \
-                --name ${CONTAINER_NAME} \
-                -p 8080:8080 \
-                ${IMAGE_NAME}:${IMAGE_TAG}
+                ./mvnw sonar:sonar \
+                  -Dsonar.projectKey=devops-lab \
+                  -Dsonar.projectName=devops-lab
                 '''
             }
         }
     }
 
-    post {
-
-        success {
-            echo 'Deployment completed successfully'
+    stage('Build Docker Image') {
+        steps {
+            sh 'docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .'
         }
+    }
 
-        failure {
-            echo 'Pipeline failed'
+    stage('Push Docker Image') {
+        steps {
+            sh 'docker push ${IMAGE_NAME}:${IMAGE_TAG}'
+        }
+    }
+
+    stage('Deploy Container') {
+        steps {
+            sh '''
+            docker stop ${CONTAINER_NAME} || true
+            docker rm ${CONTAINER_NAME} || true
+
+            docker run -d \
+            --name ${CONTAINER_NAME} \
+            -p 8080:8080 \
+            ${IMAGE_NAME}:${IMAGE_TAG}
+            '''
         }
     }
 }
